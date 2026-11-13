@@ -56,11 +56,6 @@ class TestWebApp(unittest.TestCase):
         data = resp.get_json()
         self.assertTrue(data["success"])
 
-    def test_download_endpoint(self):
-        resp = self.client.get("/download")
-        self.assertEqual(resp.status_code, 200)
-        self.assertEqual(resp.headers.get("Content-Type"), "application/vnd.openxmlformats-officedocument.presentationml.presentation")
-
 
 if __name__ == "__main__":
     unittest.main()

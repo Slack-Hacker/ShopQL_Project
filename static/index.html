@@ -3,14 +3,14 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ShopQL | Simple E-Commerce Query Studio</title>
+  <title>ShopQL | E-Commerce Query Studio</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <!-- Top Navigation -->
+  <!-- Top Navigation (No download PPT link) -->
   <header class="navbar">
     <div class="nav-brand">
       <span class="brand-icon">🛍️</span>
@@ -21,15 +21,13 @@
     </div>
     
     <div class="nav-actions">
-      <a href="/download" class="nav-btn btn-accent" download>
-        <span>📥</span> Presentation (.pptx)
-      </a>
-      <button id="btnResetCatalog" class="nav-btn btn-ghost" title="Reset all inventory back to default">
+      <button id="btnResetCatalog" class="nav-btn btn-ghost" title="Reset all inventory back to default seed data">
         <span>🔄</span> Reset Catalog
       </button>
     </div>
   </header>
 
+  <!-- Full-Width Fluid Layout -->
   <div class="main-layout">
     <!-- Hero / Query Section -->
     <section class="query-section">
@@ -42,9 +40,9 @@
           </div>
         </div>
 
-        <!-- Query Input Area -->
+        <!-- Query Input Area (Increased Height & Full Width) -->
         <div class="editor-box">
-          <textarea id="queryInput" spellcheck="false" placeholder="Type a ShopQL query here... (e.g. FIND PRODUCTS WHERE PRICE < 2000;)"></textarea>
+          <textarea id="queryInput" spellcheck="false" placeholder="Type a ShopQL query here...&#10;Example:&#10;FIND PRODUCTS&#10;WHERE PRICE < 2000&#10;AND CATEGORY = &quot;ELECTRONICS&quot;;&#10;&#10;SHOW PRODUCTS WHERE RATING >= 4.5 ORDER BY PRICE ASC;"></textarea>
           
           <div class="editor-footer">
             <div class="editor-hints">
@@ -72,7 +70,7 @@
       </div>
     </section>
 
-    <!-- Results & Compiler Views -->
+    <!-- Results & Compiler Views (Full Screen Fluid) -->
     <section class="results-section">
       <!-- Tab Header & View Switcher -->
       <div class="view-header">

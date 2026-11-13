@@ -96,27 +96,6 @@ def get_samples():
     return jsonify(SAMPLE_QUERIES)
 
 
-@app.route("/download")
-@app.route("/download/presentation")
-def download_presentation():
-    # Check both local project copy and Desktop copy (fallback if one is locked by PowerPoint)
-    candidate_paths = [
-        os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "ShopQL_Presentation.pptx")),
-        os.path.join(os.path.dirname(__file__), "ShopQL_Presentation.pptx"),
-    ]
-    for ppt_path in candidate_paths:
-        if os.path.exists(ppt_path):
-            try:
-                # Test opening to ensure it's not exclusively locked by PowerPoint
-                with open(ppt_path, "rb"):
-                    pass
-                return send_file(ppt_path, as_attachment=True, download_name="ShopQL_Presentation.pptx")
-            except (PermissionError, OSError):
-                continue
-
-    return jsonify({"error": "Presentation file is currently open/locked or not found."}), 404
-
-
 if __name__ == "__main__":
     print("Starting ShopQL Web Studio on http://localhost:5000 ...")
     app.run(host="0.0.0.0", port=5000, debug=False)
