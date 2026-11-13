@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ShopQL Studio | E-Commerce Query Language</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Header -->
+    <header class="app-header">
+      <div class="brand">
+        <div class="logo-icon">🛍️</div>
+        <div>
+          <h1>ShopQL <span class="tag">DSL & Compiler Studio</span></h1>
+          <p class="subtitle">E-Commerce Query Language: Lexer, Parser, AST, Semantic Engine & Inventory Manager</p>
+        </div>
+      </div>
+      <div class="header-actions">
+        <button id="btnResetCatalog" class="btn btn-outline" title="Reset catalog to seed inventory">
+          🔄 Reset Store
+        </button>
+        <span class="status-indicator"><span class="dot"></span> Engine Online</span>
+      </div>
+    </header>
+
+    <!-- Quick Query Presets -->
+    <div class="presets-bar">
+      <span class="presets-label">⚡ Sample Queries:</span>
+      <div class="presets-buttons" id="presetButtons">
+        <!-- Injected via JavaScript -->
+      </div>
+    </div>
+
+    <!-- Main Workspace -->
+    <main class="main-workspace">
+      <!-- Left Panel: Query Editor -->
+      <section class="editor-pane">
+        <div class="pane-header">
+          <span class="pane-title">📝 Query Editor</span>
+          <div class="editor-controls">
+            <span class="shortcut-hint">Press <kbd>Ctrl</kbd> + <kbd>Enter</kbd> to run</span>
+            <button id="btnClear" class="btn btn-sm btn-ghost">Clear</button>
+            <button id="btnRun" class="btn btn-sm btn-primary">▶ Run Query</button>
+          </div>
+        </div>
+        <div class="editor-wrapper">
+          <textarea id="queryInput" spellcheck="false" placeholder="Write ShopQL query here...&#10;Example:&#10;FIND PRODUCTS&#10;WHERE PRICE < 2000&#10;AND CATEGORY = &quot;ELECTRONICS&quot;;"></textarea>
+        </div>
+
+        <!-- Compilation & Execution Metrics Bar -->
+        <div class="metrics-bar" id="metricsBar">
+          <div class="metric-item">
+            <span class="metric-label">Status:</span>
+            <span class="metric-val" id="metricStatus">Ready</span>
+          </div>
+          <div class="metric-item">
+            <span class="metric-label">Compile:</span>
+            <span class="metric-val" id="metricCompile">0.0 ms</span>
+          </div>
+          <div class="metric-item">
+            <span class="metric-label">Execution:</span>
+            <span class="metric-val" id="metricExec">0.0 ms</span>
+          </div>
+          <div class="metric-item">
+            <span class="metric-label">Rows:</span>
+            <span class="metric-val" id="metricRows">0</span>
+          </div>
+        </div>
+
+        <!-- Compiler Diagnostic Box (Visible on Error) -->
+        <div class="error-panel" id="errorPanel" style="display: none;">
+          <div class="error-header">
+            <span>⚠️ Compiler Diagnostic</span>
+            <button class="close-btn" id="closeErrorBtn">&times;</button>
+          </div>
+          <pre id="errorText" class="error-code"></pre>
+        </div>
+      </section>
+
+      <!-- Right Panel: Visualizer Tabs -->
+      <section class="viewer-pane">
+        <div class="tabs-header">
+          <button class="tab-btn active" data-tab="tab-results">📊 Results</button>
+          <button class="tab-btn" data-tab="tab-ast">🌳 AST Tree</button>
+          <button class="tab-btn" data-tab="tab-tokens">🔤 Lexer Tokens</button>
+          <button class="tab-btn" data-tab="tab-catalog">📦 Live Inventory</button>
+          <button class="tab-btn" data-tab="tab-grammar">📖 Grammar Reference</button>
+        </div>
+
+        <div class="tab-content active" id="tab-results">
+          <div id="resultsContainer">
+            <div class="placeholder-msg">
+              <div class="placeholder-icon">🔍</div>
+              <h3>No query executed yet</h3>
+              <p>Type a ShopQL query on the left or select a sample query above and click <strong>Run Query</strong>.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="tab-content" id="tab-ast">
+          <div class="ast-controls">
+            <span class="ast-title">Abstract Syntax Tree Hierarchy</span>
+            <div class="toggle-group">
+              <button id="btnAstVisual" class="btn btn-sm btn-outline active">Tree View</button>
+              <button id="btnAstJson" class="btn btn-sm btn-outline">JSON</button>
+            </div>
+          </div>
+          <div id="astContainer" class="ast-container">
+            <div class="placeholder-msg">Run a query to inspect the generated AST structure.</div>
+          </div>
+        </div>
+
+        <div class="tab-content" id="tab-tokens">
+          <div class="tokens-header">
+            <span class="pane-title">Scanned Token Stream</span>
+            <span id="tokenCountBadge" class="badge">0 tokens</span>
+          </div>
+          <div class="table-scroll-container">
+            <table class="data-table" id="tokensTable">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Token Type</th>
+                  <th>Lexeme</th>
+                  <th>Parsed Value</th>
+                  <th>Line:Col</th>
+                </tr>
+              </thead>
+              <tbody id="tokensTableBody">
+                <tr><td colspan="5" class="text-center">Run a query to view scanned tokens.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="tab-content" id="tab-catalog">
+          <div class="catalog-header">
+            <div>
+              <h3>Product Store Catalog</h3>
+              <p class="subtitle">Real-time inventory database backing ShopQL</p>
+            </div>
+            <input type="text" id="catalogSearch" class="search-input" placeholder="Quick filter inventory...">
+          </div>
+          <div class="table-scroll-container">
+            <table class="data-table" id="catalogTable">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Product Name</th>
+                  <th>Category</th>
+                  <th>Price</th>
+                  <th>Stock</th>
+                  <th>Rating</th>
+                  <th>Description</th>
+                </tr>
+              </thead>
+              <tbody id="catalogTableBody">
+                <!-- Injected via JavaScript -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="tab-content" id="tab-grammar">
+          <div class="grammar-doc">
+            <h3>ShopQL Formal Grammar & Syntax Reference</h3>
+            <p>ShopQL is an SQL-inspired Domain-Specific Language designed for e-commerce search, filtering, sorting, and inventory transactions.</p>
+            
+            <h4>1. Search & Filter (FIND / SHOW)</h4>
+            <pre class="grammar-code"><code>FIND PRODUCTS [WHERE &lt;condition&gt;] [ORDER BY &lt;column&gt; [ASC|DESC]] [LIMIT &lt;n&gt;];
+SHOW PRODUCTS [WHERE &lt;condition&gt;] [ORDER BY &lt;column&gt; [ASC|DESC]] [LIMIT &lt;n&gt;];</code></pre>
+            
+            <h4>2. Inventory Management (ADD, RESTOCK, BUY)</h4>
+            <pre class="grammar-code"><code>ADD PRODUCT "&lt;name&gt;" PRICE &lt;num&gt; [CATEGORY "&lt;cat&gt;"] [STOCK &lt;n&gt;] [RATING &lt;num&gt;];
+RESTOCK PRODUCT "&lt;name&gt;" QUANTITY &lt;n&gt;;
+BUY PRODUCT "&lt;name&gt;" QUANTITY &lt;n&gt;;</code></pre>
+
+            <h4>3. Update & Delete</h4>
+            <pre class="grammar-code"><code>UPDATE PRODUCT "&lt;name&gt;" SET PRICE = &lt;val&gt;, STOCK = &lt;val&gt;;
+DELETE PRODUCT "&lt;name&gt;";
+DELETE PRODUCTS WHERE STOCK &lt;= 0;</code></pre>
+
+            <h4>4. Operators & Precedence</h4>
+            <table class="ref-table">
+              <thead>
+                <tr>
+                  <th>Precedence</th>
+                  <th>Operator Type</th>
+                  <th>Operators</th>
+                  <th>Example</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>1 (Highest)</td>
+                  <td>Primary / Grouping</td>
+                  <td><code>( ... )</code></td>
+                  <td><code>(A OR B) AND C</code></td>
+                </tr>
+                <tr>
+                  <td>2</td>
+                  <td>Unary</td>
+                  <td><code>NOT</code></td>
+                  <td><code>NOT (STOCK = 0)</code></td>
+                </tr>
+                <tr>
+                  <td>3</td>
+                  <td>Relational / Pattern</td>
+                  <td><code>=, !=, &lt;, &lt;=, &gt;, &gt;=, CONTAINS, LIKE, BETWEEN, IN</code></td>
+                  <td><code>PRICE &lt; 2000, NAME CONTAINS "Pro"</code></td>
+                </tr>
+                <tr>
+                  <td>4</td>
+                  <td>Conjunction</td>
+                  <td><code>AND</code></td>
+                  <td><code>PRICE &lt; 500 AND RATING &gt;= 4.5</code></td>
+                </tr>
+                <tr>
+                  <td>5 (Lowest)</td>
+                  <td>Disjunction</td>
+                  <td><code>OR</code></td>
+                  <td><code>CATEGORY = 'BOOKS' OR CATEGORY = 'HOME'</code></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
+

@@ -1,0 +1,113 @@
+{
+  "products": [
+    {
+      "id": 1,
+      "name": "MacBook Pro 16",
+      "price": 2499.0,
+      "category": "ELECTRONICS",
+      "stock": 14,
+      "rating": 4.9,
+      "description": "Apple M3 Pro 16-inch Retina display laptop with 36GB unified memory."
+    },
+    {
+      "id": 2,
+      "name": "Dell XPS 15",
+      "price": 1850.0,
+      "category": "ELECTRONICS",
+      "stock": 8,
+      "rating": 4.7,
+      "description": "Premium Windows ultrabook with 4K OLED touch display and Intel i9."
+    },
+    {
+      "id": 3,
+      "name": "Wireless Noise Cancelling Headphones",
+      "price": 349.99,
+      "category": "ELECTRONICS",
+      "stock": 42,
+      "rating": 4.8,
+      "description": "Industry leading noise canceling with 30-hour battery life."
+    },
+    {
+      "id": 4,
+      "name": "Ultra-Wide Gaming Monitor 34-inch",
+      "price": 799.0,
+      "category": "ELECTRONICS",
+      "stock": 12,
+      "rating": 4.6,
+      "description": "Curved 144Hz 1ms IPS gaming display with HDR600."
+    },
+    {
+      "id": 5,
+      "name": "Ergonomic Mechanical Keyboard",
+      "price": 189.5,
+      "category": "ACCESSORIES",
+      "stock": 25,
+      "rating": 4.7,
+      "description": "Customizable RGB split mechanical keyboard with hot-swappable switches."
+    },
+    {
+      "id": 6,
+      "name": "Precision Wireless Mouse",
+      "price": 99.0,
+      "category": "ACCESSORIES",
+      "stock": 50,
+      "rating": 4.6,
+      "description": "Ergonomic master series mouse with ultra-fast scrolling."
+    },
+    {
+      "id": 7,
+      "name": "Designing Data-Intensive Applications",
+      "price": 45.0,
+      "category": "BOOKS",
+      "stock": 100,
+      "rating": 4.9,
+      "description": "The definitive handbook by Martin Kleppmann on distributed systems and storage."
+    },
+    {
+      "id": 8,
+      "name": "Clean Code",
+      "price": 38.5,
+      "category": "BOOKS",
+      "stock": 65,
+      "rating": 4.5,
+      "description": "A handbook of agile software craftsmanship by Robert C. Martin."
+    },
+    {
+      "id": 9,
+      "name": "Modern Espresso Machine",
+      "price": 699.0,
+      "category": "HOME",
+      "stock": 6,
+      "rating": 4.8,
+      "description": "15-bar Italian pump stainless steel espresso and cappuccino maker."
+    },
+    {
+      "id": 10,
+      "name": "Smart HEPA Air Purifier",
+      "price": 199.99,
+      "category": "HOME",
+      "stock": 18,
+      "rating": 4.4,
+      "description": "Captures 99.97% of airborne particles with WiFi app control."
+    },
+    {
+      "id": 11,
+      "name": "USB-C 10-in-1 Multiport Hub",
+      "price": 59.99,
+      "category": "ACCESSORIES",
+      "stock": 0,
+      "rating": 4.3,
+      "description": "Compact hub featuring dual 4K HDMI, Gigabit Ethernet, and 100W PD."
+    },
+    {
+      "id": 12,
+      "name": "Budget Smartphone 5G",
+      "price": 299.0,
+      "category": "ELECTRONICS",
+      "stock": 35,
+      "rating": 4.2,
+      "description": "Affordable 5G smartphone with 120Hz AMOLED and 5000mAh battery."
+    }
+  ],
+  "next_id": 13
+}
