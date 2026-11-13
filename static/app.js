@@ -1,58 +1,56 @@
-// ShopQL Studio Frontend Logic
+// ShopQL Simple & Intuitive Studio Logic
 
-let currentAstData = null;
-let currentAstMode = "visual"; // "visual" or "json"
+let currentResults = [];
+let currentColumns = [];
+let currentAst = null;
+let astDisplayMode = "tree"; // "tree" or "json"
+let viewMode = "cards"; // "cards" or "table"
+
+const PRESETS = [
+  { label: "🔍 Electronics < $2,000", query: 'FIND PRODUCTS\nWHERE PRICE < 2000\nAND CATEGORY = "ELECTRONICS";' },
+  { label: "⭐ Rating >= 4.5 (Sort Price)", query: "SHOW PRODUCTS\nWHERE RATING >= 4.5\nORDER BY PRICE ASC;" },
+  { label: "➕ Add Laptop ($55,000)", query: 'ADD PRODUCT "Laptop" PRICE 55000;' },
+  { label: "🛒 Buy 2 MacBooks", query: 'BUY PRODUCT "MacBook Pro 16" QUANTITY 2;' },
+  { label: "📦 Restock Laptop (+15)", query: 'RESTOCK PRODUCT "Laptop" QUANTITY 15;' },
+  { label: "🎯 Complex Logic", query: 'FIND PRODUCTS\nWHERE (CATEGORY = "ELECTRONICS" OR CATEGORY = "BOOKS")\nAND PRICE BETWEEN 30 AND 500\nORDER BY RATING DESC;' },
+];
 
 document.addEventListener("DOMContentLoaded", () => {
   initPresets();
   initTabs();
   initEvents();
+  // Run default query on initial load
+  document.getElementById("queryInput").value = PRESETS[0].query;
+  runQuery();
   loadCatalog();
 });
 
-// Initialize Sample Preset Queries
-async function initPresets() {
-  try {
-    const res = await fetch("/api/samples");
-    const samples = await res.json();
-    const container = document.getElementById("presetButtons");
-    container.innerHTML = "";
-
-    samples.forEach((sample, idx) => {
-      const chip = document.createElement("button");
-      chip.className = "preset-chip";
-      chip.textContent = sample.title;
-      chip.title = sample.desc;
-      chip.addEventListener("click", () => {
-        document.getElementById("queryInput").value = sample.query;
-        runQuery();
-      });
-      container.appendChild(chip);
-
-      // Preload example 1 on page start
-      if (idx === 0 && !document.getElementById("queryInput").value.trim()) {
-        document.getElementById("queryInput").value = sample.query;
-      }
+function initPresets() {
+  const container = document.getElementById("presetButtons");
+  container.innerHTML = "";
+  PRESETS.forEach(p => {
+    const chip = document.createElement("button");
+    chip.className = "chip-btn";
+    chip.textContent = p.label;
+    chip.addEventListener("click", () => {
+      document.getElementById("queryInput").value = p.query;
+      runQuery();
     });
-  } catch (err) {
-    console.error("Failed to load sample queries:", err);
-  }
+    container.appendChild(chip);
+  });
 }
 
-// Tab Switching
 function initTabs() {
-  const tabButtons = document.querySelectorAll(".tab-btn");
-  tabButtons.forEach(btn => {
-    btn.addEventListener("click", () => {
-      tabButtons.forEach(b => b.classList.remove("active"));
-      document.querySelectorAll(".tab-content").forEach(c => c.classList.remove("active"));
-
-      btn.classList.add("active");
-      const targetId = btn.getAttribute("data-tab");
-      const targetTab = document.getElementById(targetId);
-      if (targetTab) {
-        targetTab.classList.add("active");
-      }
+  const tabs = document.querySelectorAll(".tab-item");
+  tabs.forEach(tab => {
+    tab.addEventListener("click", () => {
+      tabs.forEach(t => t.classList.remove("active"));
+      document.querySelectorAll(".tab-pane").forEach(p => p.classList.remove("active"));
+      
+      tab.classList.add("active");
+      const targetId = tab.getAttribute("data-tab");
+      const pane = document.getElementById(targetId);
+      if (pane) pane.classList.add("active");
 
       if (targetId === "tab-catalog") {
         loadCatalog();
@@ -60,18 +58,33 @@ function initTabs() {
     });
   });
 
-  // AST view mode toggle
-  document.getElementById("btnAstVisual").addEventListener("click", () => {
-    currentAstMode = "visual";
-    document.getElementById("btnAstVisual").classList.add("active");
+  // Switch Cards vs Table
+  document.getElementById("btnModeCards").addEventListener("click", () => {
+    viewMode = "cards";
+    document.getElementById("btnModeCards").classList.add("active");
+    document.getElementById("btnModeTable").classList.remove("active");
+    renderResultsView();
+  });
+
+  document.getElementById("btnModeTable").addEventListener("click", () => {
+    viewMode = "table";
+    document.getElementById("btnModeTable").classList.add("active");
+    document.getElementById("btnModeCards").classList.remove("active");
+    renderResultsView();
+  });
+
+  // AST tree vs json
+  document.getElementById("btnAstTree").addEventListener("click", () => {
+    astDisplayMode = "tree";
+    document.getElementById("btnAstTree").classList.add("active");
     document.getElementById("btnAstJson").classList.remove("active");
     renderAst();
   });
 
   document.getElementById("btnAstJson").addEventListener("click", () => {
-    currentAstMode = "json";
+    astDisplayMode = "json";
     document.getElementById("btnAstJson").classList.add("active");
-    document.getElementById("btnAstVisual").classList.remove("active");
+    document.getElementById("btnAstTree").classList.remove("active");
     renderAst();
   });
 }
@@ -82,7 +95,7 @@ function initEvents() {
   const btnClear = document.getElementById("btnClear");
   const btnResetCatalog = document.getElementById("btnResetCatalog");
   const closeErrorBtn = document.getElementById("closeErrorBtn");
-  const catalogSearch = document.getElementById("catalogSearch");
+  const searchInput = document.getElementById("catalogSearchInput");
 
   btnRun.addEventListener("click", runQuery);
 
@@ -92,10 +105,9 @@ function initEvents() {
   });
 
   closeErrorBtn.addEventListener("click", () => {
-    document.getElementById("errorPanel").style.display = "none";
+    document.getElementById("errorBanner").style.display = "none";
   });
 
-  // Ctrl+Enter or Cmd+Enter to run query
   queryInput.addEventListener("keydown", (e) => {
     if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
       e.preventDefault();
@@ -104,271 +116,277 @@ function initEvents() {
   });
 
   btnResetCatalog.addEventListener("click", async () => {
-    if (confirm("Reset catalog back to initial seed data?")) {
+    if (confirm("Reset catalog back to initial default seed inventory?")) {
       try {
-        const res = await fetch("/api/reset", { method: "POST" });
-        const data = await res.json();
+        const resp = await fetch("/api/reset", { method: "POST" });
+        const data = await resp.json();
         alert(data.message);
         loadCatalog();
+        runQuery();
       } catch (err) {
-        alert("Failed to reset store: " + err);
+        alert("Failed to reset catalog: " + err);
       }
     }
   });
 
-  catalogSearch.addEventListener("input", (e) => {
+  searchInput.addEventListener("input", (e) => {
     const q = e.target.value.toLowerCase();
-    const rows = document.querySelectorAll("#catalogTableBody tr");
+    const rows = document.querySelectorAll("#catalogFullBody tr");
     rows.forEach(r => {
-      const text = r.textContent.toLowerCase();
-      r.style.display = text.includes(q) ? "" : "none";
+      r.style.display = r.textContent.toLowerCase().includes(q) ? "" : "none";
     });
   });
 }
 
-// Execute Query
 async function runQuery() {
   const query = document.getElementById("queryInput").value.trim();
-  const errorPanel = document.getElementById("errorPanel");
+  const errorBanner = document.getElementById("errorBanner");
   const errorText = document.getElementById("errorText");
-  const metricStatus = document.getElementById("metricStatus");
-  const metricCompile = document.getElementById("metricCompile");
-  const metricExec = document.getElementById("metricExec");
-  const metricRows = document.getElementById("metricRows");
+  const timingBadge = document.getElementById("timingBadge");
 
   if (!query) return;
 
-  metricStatus.textContent = "Executing...";
-  metricStatus.style.color = "var(--warning)";
-
   try {
-    const resp = await fetch("/api/query", {
+    const res = await fetch("/api/query", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ query })
     });
-    const data = await resp.json();
+    const data = await res.json();
 
     if (!data.success) {
-      errorPanel.style.display = "block";
+      errorBanner.style.display = "block";
       errorText.textContent = data.error;
-      metricStatus.textContent = "Error";
-      metricStatus.style.color = "var(--danger)";
-      metricCompile.textContent = `${data.compile_time_ms || 0} ms`;
-      metricExec.textContent = "0.0 ms";
-      metricRows.textContent = "0";
+      timingBadge.style.display = "none";
       return;
     }
 
     // Success
-    errorPanel.style.display = "none";
-    metricStatus.textContent = "Success";
-    metricStatus.style.color = "var(--success)";
-    metricCompile.textContent = `${data.compile_time_ms} ms`;
-    metricExec.textContent = `${data.total_time_ms - data.compile_time_ms} ms`;
+    errorBanner.style.display = "none";
+    timingBadge.style.display = "inline-block";
+    timingBadge.textContent = `⚡ Compile: ${data.compile_time_ms}ms | Total: ${data.total_time_ms}ms`;
 
-    let totalRows = 0;
-    data.results.forEach(r => totalRows += (r.count || 0));
-    metricRows.textContent = totalRows;
+    const lastResult = data.results[data.results.length - 1];
+    currentResults = lastResult.rows || [];
+    currentColumns = lastResult.columns || [];
+    currentAst = data.ast;
 
-    // Save AST and render components
-    currentAstData = data.ast;
-    renderResults(data.results);
+    // Update product count badge
+    document.getElementById("productCountBadge").textContent = currentResults.length;
+
+    // Display message
+    const msgEl = document.getElementById("queryMessage");
+    msgEl.style.display = "block";
+    msgEl.textContent = `✔ ${lastResult.statement_type}: ${lastResult.message}`;
+
+    renderResultsView();
     renderAst();
     renderTokens(data.tokens);
 
-    // If query was a mutating statement (ADD, UPDATE, DELETE, RESTOCK, BUY), refresh catalog
-    const hasMutation = data.results.some(r => ["ADD", "UPDATE", "DELETE", "RESTOCK", "PURCHASE"].includes(r.statement_type));
-    if (hasMutation) {
+    // If query updated database, refresh catalog view
+    if (["ADD", "UPDATE", "DELETE", "RESTOCK", "PURCHASE"].includes(lastResult.statement_type)) {
       loadCatalog();
     }
 
   } catch (err) {
-    errorPanel.style.display = "block";
-    errorText.textContent = "Network or Server Error: " + err.message;
-    metricStatus.textContent = "Server Error";
-    metricStatus.style.color = "var(--danger)";
+    errorBanner.style.display = "block";
+    errorText.textContent = "Network Error: " + err.message;
   }
 }
 
-// Render Results View
-function renderResults(results) {
-  const container = document.getElementById("resultsContainer");
-  container.innerHTML = "";
+function renderResultsView() {
+  const cardsGrid = document.getElementById("cardsGrid");
+  const tableView = document.getElementById("tableView");
 
-  if (!results || results.length === 0) {
-    container.innerHTML = `<div class="placeholder-msg">No results returned.</div>`;
+  if (viewMode === "cards") {
+    cardsGrid.style.display = "grid";
+    tableView.style.display = "none";
+    renderCards();
+  } else {
+    cardsGrid.style.display = "none";
+    tableView.style.display = "block";
+    renderTable();
+  }
+}
+
+// Render Product Cards
+function renderCards() {
+  const grid = document.getElementById("cardsGrid");
+  grid.innerHTML = "";
+
+  if (currentResults.length === 0) {
+    grid.innerHTML = `<div class="empty-state" style="grid-column: 1/-1;">No products found matching query.</div>`;
     return;
   }
 
-  results.forEach(res => {
-    const block = document.createElement("div");
-    block.style.marginBottom = "24px";
-
-    const title = document.createElement("div");
-    title.style.display = "flex";
-    title.style.justifyContent = "space-between";
-    title.style.alignItems = "center";
-    title.style.marginBottom = "8px";
-    title.innerHTML = `
-      <strong style="color: #38bdf8; font-size: 14px;">${res.statement_type} — ${res.message}</strong>
-      <span style="font-size: 12px; color: var(--text-muted); font-family: var(--font-mono);">${res.execution_time_ms} ms</span>
-    `;
-    block.appendChild(title);
-
-    if (res.rows && res.rows.length > 0) {
-      const scrollDiv = document.createElement("div");
-      scrollDiv.className = "table-scroll-container";
-      const table = document.createElement("table");
-      table.className = "data-table";
-
-      // Thead
-      const thead = document.createElement("thead");
-      const trHead = document.createElement("tr");
-      res.columns.forEach(col => {
-        const th = document.createElement("th");
-        th.textContent = col.toUpperCase();
-        trHead.appendChild(th);
-      });
-      thead.appendChild(trHead);
-      table.appendChild(thead);
-
-      // Tbody
-      const tbody = document.createElement("tbody");
-      res.rows.forEach(r => {
-        const tr = document.createElement("tr");
-        res.columns.forEach(col => {
-          const td = document.createElement("td");
-          const val = r[col];
-
-          if (col === "price" && val !== undefined) {
-            td.innerHTML = `<span class="price-tag">$${parseFloat(val).toFixed(2)}</span>`;
-          } else if (col === "rating" && val !== undefined) {
-            td.innerHTML = `<span class="rating-tag">${parseFloat(val).toFixed(1)} ★</span>`;
-          } else if (col === "category" && val !== undefined) {
-            td.innerHTML = `<span class="badge badge-cat">${val}</span>`;
-          } else if (col === "stock" && val !== undefined) {
-            const stockNum = parseInt(val);
-            if (stockNum === 0) {
-              td.innerHTML = `<span class="badge badge-nostock">Out of Stock</span>`;
-            } else if (stockNum <= 5) {
-              td.innerHTML = `<span class="badge badge-lowstock">${stockNum} (Low)</span>`;
-            } else {
-              td.innerHTML = `<span class="badge badge-instock">${stockNum} in stock</span>`;
-            }
-          } else {
-            td.textContent = val !== undefined ? val : "";
-          }
-          tr.appendChild(td);
-        });
-        tbody.appendChild(tr);
-      });
-      table.appendChild(tbody);
-      scrollDiv.appendChild(table);
-      block.appendChild(scrollDiv);
+  currentResults.forEach(p => {
+    // If result is count or describe
+    if (p.count !== undefined) {
+      grid.innerHTML = `<div class="product-card" style="grid-column: 1/-1; text-align: center; padding: 30px;">
+        <h2 style="font-size: 36px; color: var(--primary);">${p.count}</h2>
+        <p style="color: var(--text-secondary);">Total Matching Products</p>
+      </div>`;
+      return;
     }
 
-    container.appendChild(block);
+    const card = document.createElement("div");
+    card.className = "product-card";
+
+    const stock = parseInt(p.stock || 0);
+    const stockClass = stock === 0 ? "stock-out" : stock <= 5 ? "stock-low" : "stock-in";
+    const stockText = stock === 0 ? "Out of Stock" : stock <= 5 ? `${stock} left (Low)` : `${stock} in stock`;
+
+    card.innerHTML = `
+      <div>
+        <div class="card-top">
+          <span class="card-category">${p.category || "GENERAL"}</span>
+          <span class="card-rating">★ ${parseFloat(p.rating || 5).toFixed(1)}</span>
+        </div>
+        <h3 class="card-title">${escapeHtml(p.name || "Product")}</h3>
+        <p class="card-desc">${escapeHtml(p.description || "")}</p>
+      </div>
+      <div>
+        <div class="card-bottom">
+          <span class="card-price">$${parseFloat(p.price || 0).toFixed(2)}</span>
+          <span class="stock-tag ${stockClass}">${stockText}</span>
+        </div>
+        <div class="card-actions">
+          <button class="btn-card-buy" ${stock === 0 ? "disabled" : ""} onclick="buyProduct('${escapeHtml(p.name || "")}')">
+            🛒 Buy 1 Unit
+          </button>
+          <button class="btn-card-buy" style="border-color: rgba(16, 185, 129, 0.4); color: #34d399;" onclick="restockProduct('${escapeHtml(p.name || "")}')">
+            📦 +10 Restock
+          </button>
+        </div>
+      </div>
+    `;
+    grid.appendChild(card);
   });
 }
 
-// Render AST Visualizer
+// Quick action handlers from cards
+window.buyProduct = function(name) {
+  document.getElementById("queryInput").value = `BUY PRODUCT "${name}" QUANTITY 1;`;
+  runQuery();
+};
+
+window.restockProduct = function(name) {
+  document.getElementById("queryInput").value = `RESTOCK PRODUCT "${name}" QUANTITY 10;`;
+  runQuery();
+};
+
+// Render Table
+function renderTable() {
+  const theadRow = document.getElementById("tableHeadRow");
+  const tbody = document.getElementById("tableBody");
+  theadRow.innerHTML = "";
+  tbody.innerHTML = "";
+
+  if (currentResults.length === 0) {
+    tbody.innerHTML = `<tr><td class="empty-state">No rows to display.</td></tr>`;
+    return;
+  }
+
+  currentColumns.forEach(c => {
+    const th = document.createElement("th");
+    th.textContent = c.toUpperCase();
+    theadRow.appendChild(th);
+  });
+
+  currentResults.forEach(r => {
+    const tr = document.createElement("tr");
+    currentColumns.forEach(c => {
+      const td = document.createElement("td");
+      const val = r[c];
+      if (c === "price" && val !== undefined) {
+        td.innerHTML = `<span style="color: var(--emerald); font-weight: 700; font-family: var(--font-mono);">$${parseFloat(val).toFixed(2)}</span>`;
+      } else if (c === "stock" && val !== undefined) {
+        const s = parseInt(val);
+        td.innerHTML = `<span class="stock-tag ${s === 0 ? 'stock-out' : s <= 5 ? 'stock-low' : 'stock-in'}">${s}</span>`;
+      } else if (c === "rating" && val !== undefined) {
+        td.innerHTML = `<span style="color: var(--amber); font-weight: 700;">★ ${parseFloat(val).toFixed(1)}</span>`;
+      } else {
+        td.textContent = val !== undefined ? val : "";
+      }
+      tr.appendChild(td);
+    });
+    tbody.appendChild(tr);
+  });
+}
+
+// Render AST Tree
 function renderAst() {
-  const container = document.getElementById("astContainer");
-  if (!currentAstData) {
-    container.innerHTML = `<div class="placeholder-msg">Run a query to inspect the generated AST structure.</div>`;
+  const container = document.getElementById("astViewContainer");
+  if (!currentAst) {
+    container.innerHTML = `<div class="empty-state">No AST available.</div>`;
     return;
   }
 
-  if (currentAstMode === "json") {
-    container.innerHTML = `<pre style="color: #93c5fd; overflow: auto;">${JSON.stringify(currentAstData, null, 2)}</pre>`;
+  if (astDisplayMode === "json") {
+    container.innerHTML = `<pre style="color: #93c5fd; font-size: 12px;">${JSON.stringify(currentAst, null, 2)}</pre>`;
     return;
   }
 
-  // Visual Tree Mode
   container.innerHTML = "";
-  currentAstData.forEach(stmt => {
-    container.appendChild(createAstTreeNode(stmt));
+  currentAst.forEach(node => {
+    container.appendChild(createAstElement(node));
   });
 }
 
-function createAstTreeNode(node) {
-  const el = document.createElement("div");
-  el.className = "ast-node";
+function createAstElement(node) {
+  const div = document.createElement("div");
+  div.className = "ast-node";
 
   const pill = document.createElement("div");
   pill.className = "ast-pill";
 
-  const typeSpan = document.createElement("span");
-  typeSpan.className = "ast-pill-type";
-  typeSpan.textContent = node._type || "Node";
-  pill.appendChild(typeSpan);
+  const type = document.createElement("span");
+  type.className = "ast-type";
+  type.textContent = node._type || "Node";
+  pill.appendChild(type);
 
-  // Collect simple attributes
-  const simpleAttrs = [];
+  const attrs = [];
   for (const [k, v] of Object.entries(node)) {
     if (k !== "_type" && k !== "line" && k !== "column" && typeof v !== "object") {
-      simpleAttrs.push(`${k}: ${JSON.stringify(v)}`);
+      attrs.push(`${k}: ${JSON.stringify(v)}`);
     }
   }
 
-  if (simpleAttrs.length > 0) {
-    const propsSpan = document.createElement("span");
-    propsSpan.className = "ast-pill-props";
-    propsSpan.textContent = `(${simpleAttrs.join(", ")})`;
-    pill.appendChild(propsSpan);
+  if (attrs.length > 0) {
+    const span = document.createElement("span");
+    span.className = "ast-attr";
+    span.textContent = `(${attrs.join(", ")})`;
+    pill.appendChild(span);
   }
+  div.appendChild(pill);
 
-  el.appendChild(pill);
-
-  // Recurse child nodes
   for (const [k, v] of Object.entries(node)) {
     if (k === "_type" || k === "line" || k === "column") continue;
     if (v && typeof v === "object") {
       if (Array.isArray(v)) {
-        if (v.length > 0 && typeof v[0] === "object") {
-          const listLabel = document.createElement("div");
-          listLabel.style.fontSize = "11px";
-          listLabel.style.color = "var(--text-muted)";
-          listLabel.style.marginLeft = "12px";
-          listLabel.textContent = `▼ ${k} [${v.length}]:`;
-          el.appendChild(listLabel);
-          v.forEach(child => el.appendChild(createAstTreeNode(child)));
-        }
+        v.forEach(child => {
+          if (typeof child === "object") div.appendChild(createAstElement(child));
+        });
       } else {
-        const fieldLabel = document.createElement("div");
-        fieldLabel.style.fontSize = "11px";
-        fieldLabel.style.color = "var(--text-muted)";
-        fieldLabel.style.marginLeft = "12px";
-        fieldLabel.textContent = `▼ ${k}:`;
-        el.appendChild(fieldLabel);
-        el.appendChild(createAstTreeNode(v));
+        div.appendChild(createAstElement(v));
       }
     }
   }
 
-  return el;
+  return div;
 }
 
-// Render Scanned Token Stream
+// Render Tokens
 function renderTokens(tokens) {
-  const tbody = document.getElementById("tokensTableBody");
-  const badge = document.getElementById("tokenCountBadge");
+  const tbody = document.getElementById("tokensBody");
   tbody.innerHTML = "";
-
-  if (!tokens || tokens.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="5" class="text-center">No tokens generated.</td></tr>`;
-    badge.textContent = "0 tokens";
-    return;
-  }
-
-  badge.textContent = `${tokens.length} tokens`;
+  if (!tokens || tokens.length === 0) return;
 
   tokens.forEach((t, i) => {
     const tr = document.createElement("tr");
     tr.innerHTML = `
       <td>${i + 1}</td>
-      <td><span class="badge" style="background-color: #312e81; color: #c7d2fe;">${t.type}</span></td>
+      <td><span style="color: #a78bfa; font-weight: 700;">${t.type}</span></td>
       <td><code style="color: #38bdf8;">${escapeHtml(t.lexeme)}</code></td>
       <td><code style="color: #34d399;">${escapeHtml(String(t.value))}</code></td>
       <td style="color: var(--text-muted); font-family: var(--font-mono);">${t.line}:${t.column}</td>
@@ -377,30 +395,26 @@ function renderTokens(tokens) {
   });
 }
 
-// Load Store Catalog
+// Load Full Catalog
 async function loadCatalog() {
   try {
     const res = await fetch("/api/catalog");
     const data = await res.json();
-    const tbody = document.getElementById("catalogTableBody");
+    const tbody = document.getElementById("catalogFullBody");
     tbody.innerHTML = "";
 
     data.products.forEach(p => {
       const tr = document.createElement("tr");
-      const stockBadge = p.stock === 0 
-        ? `<span class="badge badge-nostock">Out of Stock</span>`
-        : p.stock <= 5 
-        ? `<span class="badge badge-lowstock">${p.stock} (Low)</span>`
-        : `<span class="badge badge-instock">${p.stock} in stock</span>`;
-
       tr.innerHTML = `
         <td>${p.id}</td>
         <td><strong>${escapeHtml(p.name)}</strong></td>
-        <td><span class="badge badge-cat">${escapeHtml(p.category)}</span></td>
-        <td><span class="price-tag">$${parseFloat(p.price).toFixed(2)}</span></td>
-        <td>${stockBadge}</td>
-        <td><span class="rating-tag">${parseFloat(p.rating).toFixed(1)} ★</span></td>
-        <td style="color: var(--text-muted); font-size: 12px;">${escapeHtml(p.description || "")}</td>
+        <td><span class="card-category">${escapeHtml(p.category)}</span></td>
+        <td style="color: var(--emerald); font-weight: 700; font-family: var(--font-mono);">$${parseFloat(p.price).toFixed(2)}</td>
+        <td><span class="stock-tag ${p.stock === 0 ? 'stock-out' : p.stock <= 5 ? 'stock-low' : 'stock-in'}">${p.stock}</span></td>
+        <td style="color: var(--amber); font-weight: 700;">★ ${parseFloat(p.rating).toFixed(1)}</td>
+        <td>
+          <button class="chip-btn" style="padding: 3px 8px; font-size: 11px;" onclick="buyProduct('${escapeHtml(p.name)}')">Buy 1</button>
+        </td>
       `;
       tbody.appendChild(tr);
     });
@@ -417,4 +431,3 @@ function escapeHtml(str) {
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#039;");
 }
-
