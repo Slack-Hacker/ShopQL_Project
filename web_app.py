@@ -5,7 +5,7 @@ AST tree visualization, token inspection, and inventory management.
 """
 
 import os
-from flask import Flask, request, jsonify, send_from_directory
+from flask import Flask, request, jsonify, send_from_directory, send_file
 from flask_cors import CORS
 
 from shopql.engine import ShopQLEngine
@@ -94,6 +94,27 @@ def reset_catalog():
 @app.route("/api/samples", methods=["GET"])
 def get_samples():
     return jsonify(SAMPLE_QUERIES)
+
+
+@app.route("/download")
+@app.route("/download/presentation")
+def download_presentation():
+    # Check both local project copy and Desktop copy (fallback if one is locked by PowerPoint)
+    candidate_paths = [
+        os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "ShopQL_Presentation.pptx")),
+        os.path.join(os.path.dirname(__file__), "ShopQL_Presentation.pptx"),
+    ]
+    for ppt_path in candidate_paths:
+        if os.path.exists(ppt_path):
+            try:
+                # Test opening to ensure it's not exclusively locked by PowerPoint
+                with open(ppt_path, "rb"):
+                    pass
+                return send_file(ppt_path, as_attachment=True, download_name="ShopQL_Presentation.pptx")
+            except (PermissionError, OSError):
+                continue
+
+    return jsonify({"error": "Presentation file is currently open/locked or not found."}), 404
 
 
 if __name__ == "__main__":
