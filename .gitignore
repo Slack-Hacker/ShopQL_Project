@@ -8,4 +8,7 @@ htmlcov/
 *.log
 .vscode/
 .idea/
+*.pptx
+slides_assets/
+create_presentation.py
 
